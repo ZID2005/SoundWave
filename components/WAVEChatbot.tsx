@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaPaperPlane } from "react-icons/fa";
+import DOMPurify from "isomorphic-dompurify";
+import { useAuth } from "@/context/AuthContext";
+
 
 interface Message {
   role: "user" | "assistant";
@@ -40,6 +43,12 @@ function formatMarkdown(text: string): string {
 }
 
 export default function WAVEChatbot() {
+  const { user } = useAuth();
+  const [sessionId] = useState(() => 
+    typeof crypto !== "undefined" && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2, 15)
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -86,11 +95,22 @@ export default function WAVEChatbot() {
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          headers["Authorization"] = `Bearer ${token}`;
+        } catch (tokenErr) {
+          console.error("Error retrieving ID token:", tokenErr);
+        }
+      }
+
       const res = await fetch("/api/wave-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          sessionId,
         }),
       });
 
@@ -102,7 +122,7 @@ export default function WAVEChatbot() {
           ...prev,
           {
             role: "assistant",
-            content: "Apologies, I ran into a hiccup. Try again in a moment!",
+            content: data.error || "Apologies, I ran into a hiccup. Try again in a moment!",
           },
         ]);
       }
@@ -273,7 +293,7 @@ export default function WAVEChatbot() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#0D0D0D",
+                  color: "#000000",
                   fontSize: "0.9rem",
                   flexShrink: 0,
                   boxShadow: "0 0 16px rgba(201,168,76,0.4)",
@@ -380,7 +400,7 @@ export default function WAVEChatbot() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "#0D0D0D",
+                        color: "#000000",
                         marginRight: "0.5rem",
                         flexShrink: 0,
                         alignSelf: "flex-end",
@@ -415,7 +435,7 @@ export default function WAVEChatbot() {
                       wordBreak: "break-word",
                     }}
                     dangerouslySetInnerHTML={{
-                      __html: formatMarkdown(msg.content),
+                      __html: DOMPurify.sanitize(formatMarkdown(msg.content)),
                     }}
                   />
                 </motion.div>
@@ -438,7 +458,7 @@ export default function WAVEChatbot() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "#0D0D0D",
+                      color: "#000000",
                       flexShrink: 0,
                     }}
                   >
@@ -578,7 +598,7 @@ export default function WAVEChatbot() {
                   border: "none",
                   color:
                     input.trim() && !isLoading
-                      ? "#0D0D0D"
+                      ? "#000000"
                       : "rgba(255,255,255,0.2)",
                   cursor:
                     input.trim() && !isLoading ? "pointer" : "not-allowed",

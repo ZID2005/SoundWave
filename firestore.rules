@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if request is from the owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      // The admin UID matching the value NEXT_PUBLIC_ADMIN_UID
+      return isAuthenticated() && request.auth.uid == 'U29IayKczPZyVfn1cQMOJLIaQPy2';
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete, write: if isAdmin();
+    }
+
+    match /customOrders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete, write: if isAdmin();
+    }
+
+    match /savedBuilds/{buildId} {
+      allow read, write, delete: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    match /enquiries/{enquiryId} {
+      allow create: if true; // anyone can submit enquiries/contacts
+      allow read, update, delete, write: if isAdmin();
+    }
+
+    match /notifyMe/{notifyId} {
+      allow create: if true; // anyone can sign up for upcoming product notifications
+      allow read, update, delete, write: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true; // anyone can view catalog products
+      allow write, update, delete: if isAdmin();
+    }
+
+    match /upcomingProducts/{productId} {
+      allow read: if true; // anyone can view upcoming products teaser
+      allow write, update, delete: if isAdmin();
+    }
+
+    match /wishlists/{wishlistId} {
+      allow read, write, delete: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+    }
+
+    match /admin/{adminDocId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

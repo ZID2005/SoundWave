@@ -16,7 +16,12 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Prefetch key paths in production to make transitions/redirects instant
+    if (process.env.NODE_ENV === "production") {
+      router.prefetch("/welcome");
+      router.prefetch("/");
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!loading && mounted) {
@@ -27,31 +32,18 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
         router.push("/");
       } else if (user && isGuestOnly) {
         router.push("/");
-      } else if (!user && pathname === "/") {
-        const hasEntered = sessionStorage.getItem("soundwave_entered");
-        if (!hasEntered) {
-          router.push("/welcome");
-        }
       }
     }
   }, [user, loading, pathname, router, mounted]);
 
   const isProtected = PROTECTED_PATHS.includes(pathname);
-  const hasEntered =
-    mounted && typeof window !== "undefined"
-      ? sessionStorage.getItem("soundwave_entered") === "true"
-      : false;
+  const needsLoadingScreen = loading && isProtected;
 
-  // ── Only block for protected pages or first-time homepage visit ──
-  // Public pages (products, build-your-sound, about, etc.) render IMMEDIATELY
-  const isFirstHomeVisit = pathname === "/" && !hasEntered;
-  const needsAuthBlock = isProtected || isFirstHomeVisit;
-
-  if (loading && needsAuthBlock && pathname !== "/welcome") {
+  if (needsLoadingScreen) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#0D0D0D" }}
+        style={{ backgroundColor: "#000000" }}
       >
         <div className="relative z-10 flex flex-col items-center gap-5">
           <Loading />

@@ -43,3 +43,7 @@ firebase-debug.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local DB and uploads fallback
+/local_db.json
+/public/uploads/

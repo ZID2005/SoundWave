@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
 import toast from "react-hot-toast";
 import Loading from "@/components/Loading";
 
@@ -21,20 +19,12 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    async function checkAdmin() {
-      try {
-        const q = query(collection(db, "admins"), where("phone", "==", user?.phoneNumber));
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-          setIsAdmin(true);
-        } else {
-          toast.error("Access denied. Admins only.");
-          router.push("/");
-        }
-      } catch (error) {
-        console.error("Error checking admin status:", error);
-        toast.error("Access denied.");
+    function checkAdmin() {
+      const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID;
+      if (adminUid && user?.uid === adminUid) {
+        setIsAdmin(true);
+      } else {
+        toast.error("Access denied. Admins only.");
         router.push("/");
       }
     }

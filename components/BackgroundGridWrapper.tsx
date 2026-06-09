@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Aurora from "@/components/Aurora";
+import dynamic from "next/dynamic";
+const Aurora = dynamic(() => import("@/components/Aurora"), { ssr: false });
 
 export default function BackgroundGridWrapper() {
   const pathname = usePathname();
@@ -12,7 +13,7 @@ export default function BackgroundGridWrapper() {
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-60">
       <Aurora
-        colorStops={["#3A3016", "#0D0D0D", "#2C2C2C"]}
+        colorStops={["#3A3016", "#000000", "#2C2C2C"]}
         amplitude={1.2}
         blend={0.6}
         speed={0.3}

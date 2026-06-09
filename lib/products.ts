@@ -7,128 +7,184 @@ export interface Product {
   priceRangeText: string;
   description: string;
   image: string;
+  images?: string[];
   specs: Record<string, string>;
+  createdAt?: string;
 }
 
 export const dummyProducts: Product[] = [
   {
-    id: "horizon-acoustic-series",
-    name: "The Horizon Acoustic Series",
-    category: "sound-systems",
-    technology: "hybrid",
-    priceRange: "3l+",
-    priceRangeText: "₹3.5L - ₹4.2L",
-    description: "Experience unprecedented clarity with our flagship acoustic series. Crafted from aerospace-grade aluminum and tuned by master acoustic engineers.",
-    image: "placeholder",
-    specs: {
-      "Frequency Response": "5Hz - 50kHz",
-      "THD": "< 0.0001%",
-      "Amplification": "Class-A"
-    }
-  },
-  {
-    id: "aethos-integrated-amp",
-    name: "Aethos Integrated Amp",
-    category: "amplifiers",
-    technology: "solid-state",
-    priceRange: "1l-3l",
-    priceRangeText: "₹2.1L",
-    description: "A dual-mono integrated amplifier delivering pristine power and unparalleled control over even the most demanding loudspeakers.",
-    image: "placeholder",
-    specs: {
-      "Power Output": "150W per channel",
-      "Inputs": "5x RCA, 1x XLR",
-      "Weight": "17.5 kg"
-    }
-  },
-  {
-    id: "valkyrie-tube-preamp",
-    name: "Valkyrie Tube Preamp",
-    category: "amplifiers",
-    technology: "tube",
-    priceRange: "50k-1l",
-    priceRangeText: "₹85,000",
-    description: "Warmth, holographic soundstage, and lush mids. The Valkyrie brings the magic of vacuum tubes to your digital and analog sources.",
-    image: "placeholder",
-    specs: {
-      "Tubes": "4x 12AX7, 2x 12AU7",
-      "Gain": "15dB",
-      "Output Impedance": "200 Ohms"
-    }
-  },
-  {
-    id: "obsidian-bookshelf",
-    name: "Obsidian Monitors",
-    category: "speakers",
-    technology: "solid-state",
-    priceRange: "1l-3l",
-    priceRangeText: "₹1.4L / pair",
-    description: "Reference-grade bookshelf speakers featuring beryllium tweeters and custom carbon-fiber mid-woofers.",
-    image: "placeholder",
-    specs: {
-      "Sensitivity": "87dB",
-      "Impedance": "8 Ohms",
-      "Recommended Power": "50W - 200W"
-    }
-  },
-  {
-    id: "obsidian-floorstanders",
-    name: "Obsidian Towers",
-    category: "speakers",
-    technology: "hybrid",
-    priceRange: "3l+",
-    priceRangeText: "₹4.8L / pair",
-    description: "Full-range floorstanding monoliths capable of reproducing the full scale and dynamics of a live orchestra.",
-    image: "placeholder",
-    specs: {
-      "Sensitivity": "90dB",
-      "Impedance": "4 Ohms",
-      "Frequency Response": "20Hz - 40kHz"
-    }
-  },
-  {
-    id: "quantum-dac",
-    name: "Quantum DAC",
+    id: "class-d-amplifier",
+    name: "Class D Amplifier",
     category: "amplifiers",
     technology: "digital",
     priceRange: "under-50k",
-    priceRangeText: "₹45,000",
-    description: "A reference digital-to-analog converter with proprietary FPGA architecture.",
-    image: "placeholder",
+    priceRangeText: "₹3,000",
+    description: "A compact and powerful 50 Watts Class D stereo amplifier (50W + 50W output) featuring dedicated bass and treble tone controls, built-in speaker protection, and an integrated 0.5 Bluetooth receiver.",
+    image: "/images/products/class-d-amp-front.jpg",
+    images: [
+      "/images/products/class-d-amp-front.jpg",
+      "/images/products/class-d-amp-back.jpg"
+    ],
     specs: {
-      "Decoding": "Up to 32-bit/768kHz PCM, DSD512",
-      "Outputs": "RCA, XLR",
-      "Dynamic Range": "130dB"
-    }
+      "Topology": "Class D Stereo Amplifier",
+      "Power Output": "50W + 50W (Stereo Output)",
+      "Tone Control": "Dedicated Bass & Treble Knobs",
+      "Wireless": "Built-in 0.5 Bluetooth Receiver",
+      "Inputs": "RCA Aux Input",
+      "Outputs": "Spring Clip Speaker Terminals",
+      "Power Supply": "DC Power Input (Toggle Switch control)",
+      "Price": "₹3,000"
+    },
+    createdAt: new Date().toISOString()
   },
   {
-    id: "silver-streak-interconnects",
-    name: "Silver Streak RCA",
-    category: "cables",
+    id: "amplifier-21",
+    name: "2.1 Amplifier",
+    category: "amplifiers",
     technology: "solid-state",
     priceRange: "under-50k",
-    priceRangeText: "₹15,000 / pair",
-    description: "Pure silver conductors with Teflon dielectric for zero signal degradation and perfect phase coherency.",
-    image: "placeholder",
+    priceRangeText: "₹27,500",
+    description: "A premium 2.1 channel controlled amplifier featuring 100 Watts per channel stereo and 200 Watts subwoofer output. Built with soft start control, 3-channel built-in speaker protection, dedicated bass and treble tone controls with low-pass filtering, gain control, and a 0.5 Bluetooth receiver with auxiliary input.",
+    image: "/images/products/amp-21-front.png",
+    images: [
+      "/images/products/amp-21-front.png",
+      "/images/products/amp-21-rear.jpg",
+      "/images/products/amp-21-top.jpg"
+    ],
     specs: {
-      "Conductor": "99.999% Pure Silver",
-      "Shielding": "Double braided copper",
-      "Connectors": "Rhodium-plated"
+      "Topology": "2.1 Channel Controlled Amplifier",
+      "Stereo Output": "100 Watts per Channel",
+      "Subwoofer Output": "200 Watts",
+      "Soft Start": "Inbuilt soft start control",
+      "Protection": "3-Channel built-in speaker protection",
+      "Tone Control": "Dedicated Bass & Treble with Low-Pass Filter",
+      "Gain Control": "Gain control system",
+      "Connectivity": "0.5 Bluetooth Receiver with Aux",
+      "Price": "₹27,500"
     }
   },
   {
-    id: "titan-speaker-cables",
-    name: "Titan Speaker Cables",
-    category: "cables",
+    id: "soundwave-21-combo",
+    name: "Soundwave 2.1 System Combo Pack",
+    category: "sound-systems",
     technology: "solid-state",
     priceRange: "50k-1l",
-    priceRangeText: "₹65,000 / pair",
-    description: "Massive gauge pure OCC copper for effortless current delivery to your hungry loudspeakers.",
-    image: "placeholder",
+    priceRangeText: "₹57,500",
+    description: "High-performance audio combo pack featuring the premium 2.1 channel controlled amplifier, paired with matching 2-channel stereo bookshelf speakers and an imported-grade subwoofer box.",
+    image: "/images/products/combo-pack.jpg",
+    images: [
+      "/images/products/combo-pack.jpg"
+    ],
     specs: {
-      "Gauge": "8 AWG",
-      "Dielectric": "Air-spaced Polyethylene",
-      "Termination": "Cold-welded Bananas or Spades"
+      "Included Amplifier": "2.1 Channel Controlled Amplifier",
+      "Included Speakers": "2-Channel Stereo Bookshelf Speakers",
+      "Included Subwoofer": "Imported Grade Subwoofer Box",
+      "Price": "₹57,500"
+    }
+  },
+  {
+    id: "yamaha-3inch-bookshelf-speaker",
+    name: "Yamaha 3-Inch Bookshelf Speaker with Tweeter",
+    category: "speakers",
+    technology: "solid-state",
+    priceRange: "under-50k",
+    priceRangeText: "₹7,500 / pair",
+    description: "Premium bookshelf speakers featuring custom Yamaha 3-inch drivers and integrated high-frequency tweeters. Designed with an inbuilt high-performance crossover network specifically optimized for Class-D digital amplifiers, delivering ultra-clear vocal clarity, sparkling highs, and a punchy, well-defined mid-bass response. Housed in custom handcrafted wood enclosures with removable acoustic black fabric grilles.",
+    image: "/images/products/yamaha-3inch-bookshelf-front.jpg",
+    images: [
+      "/images/products/yamaha-3inch-bookshelf-front.jpg",
+      "/images/products/yamaha-3inch-bookshelf-grille.jpg",
+      "/images/products/yamaha-3inch-bookshelf-back.jpg"
+    ],
+    specs: {
+      "Drivers": "★ 3-Inch Yamaha Woofer Driver + Integrated Tweeter",
+      "Crossover": "★ Inbuilt Crossover Network (Optimized for Class-D Amps)",
+      "Power Handling": "★ 50 Watts RMS Continuous Power",
+      "Enclosure": "Premium Walnut Veneer Wood Cabinets",
+      "Grilles": "Acoustic Removable Black Cloth Grilles",
+      "Price": "₹7,500 / pair"
+    }
+  },
+  {
+    id: "mid-base-21-amplifier",
+    name: "Mid Base 2.1 Amplifier",
+    category: "amplifiers",
+    technology: "solid-state",
+    priceRange: "under-50k",
+    priceRangeText: "₹22,000",
+    description: "A powerhouse 2.1 stereo amplifier built around a dual-channel MOSFET power stage and a dedicated sub-channel transistor circuit. Delivers tight, authoritative bass reproduction alongside pristine stereo mid-range clarity. Features a low-pass stereo preamplifier stage with active speaker protection circuitry, banana-style binding posts, gold-plated RCA inputs, and an inbuilt Bluetooth receiver. Premium SCHACH electrolytic capacitors ensure ultra-low distortion and long-term reliability across the entire signal chain.",
+    image: "/images/products/mid-base-21-amp-front.jpg",
+    images: [
+      "/images/products/mid-base-21-amp-front.jpg",
+      "/images/products/mid-base-21-amp-back.png",
+      "/images/products/mid-base-21-amp-side.jpg"
+    ],
+    specs: {
+      "Topology": "★ Stereo 2-Channel MOSFET Power Amplifier",
+      "Sub Channel": "★ Dedicated Sub-Channel Transistor Stage",
+      "Preamp": "Low-Pass Stereo Preamplifier Stage",
+      "Protection": "★ Active Speaker Protection Circuit",
+      "Speaker Output": "Banana Speaker Binding Posts",
+      "Inputs": "RCA Aux Input",
+      "Controls": "Low-Pass Volume Control + Selector Mode Switch",
+      "Wireless": "Inbuilt Bluetooth Receiver",
+      "Capacitors": "★ Special Grade SCHACH Electrolytic",
+      "Price": "₹22,000"
+    }
+  },
+  {
+    id: "bluetooth-pro-preamp",
+    name: "Bluetooth Pre Amplifier for Professional Grade",
+    category: "amplifiers",
+    technology: "solid-state",
+    priceRange: "under-50k",
+    priceRangeText: "₹12,500",
+    description: "A professional-grade Bluetooth pre-amplifier engineered for audiophiles and studio environments. Features a dedicated Bass + Triple Mid tone stack, professional-grade OP-Amp circuitry with precision gain control, gold-plated RCA phono connectors, and a special-grade CRGO toroidal transformer with an ultra-wide 90 kHz bandwidth. Built on premium SCHACH electrolytic capacitors for crystal-clear signal fidelity. Switchable front panel with a dedicated power socket for a clean, professional desktop installation.",
+    image: "/images/products/bluetooth-pro-preamp-front.png",
+    images: [
+      "/images/products/bluetooth-pro-preamp-front.png",
+      "/images/products/bluetooth-pro-preamp-back.png",
+      "/images/products/bluetooth-pro-preamp-top.jpg"
+    ],
+    specs: {
+      "Tone Control": "Dedicated Bass + Triple Mid EQ",
+      "Bluetooth": "0.5 Bluetooth Receiver with Aux & FM",
+      "Amplification": "★ Professional Grade OP-Amp with Gain Control",
+      "Connectors": "★ Gold Plated RCA Socket with Phono Connector",
+      "Front Panel": "Selected Switch Panel with Power Socket",
+      "Transformer": "★ Special Grade CRGO — 90 kHz Bandwidth",
+      "Capacitors": "★ Special Grade SCHACH Electrolytic",
+      "Price": "₹12,500"
     }
   }
 ];
+
+// ── Shared session-level product cache ─────────────────────────────────────
+// The products LIST page populates this the first time it loads.
+// The DETAIL page reads from here first — so navigating from list→detail
+// is instant (zero extra Firestore calls).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export let sharedProductsCache: any[] | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function setSharedProductsCache(data: any[]) {
+  sharedProductsCache = data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getProductById(id: string): any | null {
+  if (sharedProductsCache) {
+    const found = sharedProductsCache.find((p) => p.id === id);
+    if (found) return found;
+  }
+  return dummyProducts.find((p) => p.id === id) ?? null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRelatedFromCache(category: string, excludeId: string): any[] {
+  const pool = sharedProductsCache ?? dummyProducts;
+  return pool
+    .filter((p) => p.category === category && p.id !== excludeId)
+    .slice(0, 3);
+}

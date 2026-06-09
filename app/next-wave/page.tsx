@@ -124,11 +124,29 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 }
 
 export default function NextWavePage() {
+  const [products, setProducts] = useState<UpcomingProduct[]>(upcomingProducts);
   const [activeImage, setActiveImage] = useState<number | null>(0);
   const [selectedProduct, setSelectedProduct] = useState<UpcomingProduct | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [contactInput, setContactInput] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    const fetchUpcoming = async () => {
+      try {
+        const { db } = await import("@/lib/firebase");
+        const { collection, getDocs } = await import("firebase/firestore");
+        const snap = await getDocs(collection(db, "upcomingProducts"));
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as unknown as UpcomingProduct));
+          setProducts(list);
+        }
+      } catch (e) {
+        console.error("Error fetching upcoming products from Firestore:", e);
+      }
+    };
+    fetchUpcoming();
+  }, []);
 
   const handleOpenNotify = (product: UpcomingProduct) => {
     setSelectedProduct(product);
@@ -137,14 +155,43 @@ export default function NextWavePage() {
     setIsSubmitted(false);
   };
 
-  const handleSubmitNotify = (e: React.FormEvent) => {
+  const handleSubmitNotify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactInput.trim()) {
+    const inputVal = contactInput.trim();
+    if (!inputVal) {
       toast.error("Please enter your email or phone number.");
       return;
     }
-    setIsSubmitted(true);
-    toast.success("Successfully registered for updates!");
+
+    const isEmail = inputVal.includes("@");
+    const payload = {
+      productId: selectedProduct?.code || "SW-GENERIC",
+      productName: selectedProduct?.name || "Unknown Product",
+      email: isEmail ? inputVal : "",
+      phone: !isEmail ? inputVal : "",
+    };
+
+    try {
+      const res = await fetch("/api/notify-me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to register.");
+      }
+
+      setIsSubmitted(true);
+      toast.success("Successfully registered for updates!");
+    } catch (err) {
+      console.error("Error saving notification request:", err);
+      const msg = err instanceof Error ? err.message : "Failed to register. Please try again.";
+      toast.error(msg);
+    }
   };
 
   return (
@@ -176,7 +223,7 @@ export default function NextWavePage() {
         {/* Upcoming Products Accordion Showcase (HoverExpand_002 layout) */}
         <ScrollReveal delay={200}>
           <div className="flex w-full flex-col gap-3">
-            {upcomingProducts.map((product, index) => {
+            {products.map((product, index) => {
               const isExpanded = activeImage === index;
               return (
                 <motion.div

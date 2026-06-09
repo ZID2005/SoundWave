@@ -4,10 +4,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { FaBroadcastTower } from "react-icons/fa";
 import Loading from "@/components/Loading";
+import GoBackButton from "@/components/GoBackButton";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{ backgroundColor: "#0D0D0D" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{ backgroundColor: "#000000" }}>
       {/* Background elements */}
       <div className="absolute inset-0 z-0 opacity-10 pointer-events-none flex justify-center items-center">
         <Loading />
@@ -31,12 +32,15 @@ export default function NotFound() {
         <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "clamp(2.5rem, 6vw, 4rem)", fontWeight: 300, letterSpacing: "0.1em", textTransform: "uppercase", color: "#F5F5F5", marginBottom: "1rem" }}>Signal Lost</h1>
         <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.9rem", color: "#6B6B6B", lineHeight: 1.8, letterSpacing: "0.03em", marginBottom: "2.5rem" }}>The frequency you&apos;re looking for doesn&apos;t exist or has been moved.</p>
         
-        <Link 
-          href="/"
-          className="btn-gold"
-        >
-          Return Home
-        </Link>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <GoBackButton label="Go Back" />
+          <Link 
+            href="/"
+            className="btn-gold"
+          >
+            Return Home
+          </Link>
+        </div>
       </motion.div>
     </div>
   );

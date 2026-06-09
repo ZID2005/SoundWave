@@ -8,8 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      backgroundImage: {
+        "gradient-conic": "conic-gradient(var(--tw-gradient-stops))",
+      },
       colors: {
-        background: "#0D0D0D",
+        background: "#000000",
         foreground: "#F5F5F5",
         primary: "#C9A84C",
         secondary: "#A8A8A8",

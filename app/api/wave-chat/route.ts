@@ -42,21 +42,72 @@ What you do NOT do:
 
 Always introduce yourself as WAVE when a conversation starts. Keep responses concise but rich in value. Use markdown for formatting when helpful.`;
 
+/**
+ * Sanitizes user input content by stripping common prompt injection phrases.
+ */
+function sanitizeMessageContent(content: string): string {
+  if (typeof content !== "string") return "";
+
+  // Common prompt injection attack patterns (case insensitive)
+  const injectionPatterns = [
+    /ignore\s+(?:all\s+)?(?:previous\s+)?instructions/gi,
+    /ignore\s+(?:the\s+)?system\s+(?:prompt|instructions|rules)/gi,
+    /forget\s+(?:all\s+)?(?:previous\s+)?instructions/gi,
+    /forget\s+(?:what\s+)?(?:we\s+)?(?:were\s+)?(?:talking\s+)?about/gi,
+    /system\s+override/gi,
+    /developer\s+mode/gi,
+    /jailbreak/gi,
+    /you\s+are\s+now\s+a/gi,
+    /act\s+as\s+a/gi,
+    /output\s+the\s+system\s+prompt/gi,
+    /print\s+the\s+system\s+prompt/gi,
+    /reveal\s+(?:your\s+)?system\s+prompt/gi,
+    /decode\s+your\s+system\s+prompt/gi,
+  ];
+
+  let sanitized = content;
+  let detected = false;
+
+  for (const pattern of injectionPatterns) {
+    if (pattern.test(sanitized)) {
+      sanitized = sanitized.replace(pattern, "[removed injection trigger]");
+      detected = true;
+    }
+  }
+
+  if (detected) {
+    console.warn(`[WAVE AI Injection Detector] Neutralized input: "${content}" -> "${sanitized}"`);
+  }
+
+  return sanitized;
+}
+
 export async function POST(req: NextRequest) {
+  const timestamp = new Date().toISOString();
+  const routeInfo = "/api/wave-chat";
+
   try {
-    const { messages } = await req.json();
+    const { messages, sessionId } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey || apiKey === "gsk_placeholder_replace_with_your_groq_key") {
-      return NextResponse.json(
-        { error: "Groq API key not configured. Please add your GROQ_API_KEY to .env.local" },
-        { status: 500 }
-      );
+    if (!apiKey) {
+      console.error(`[${timestamp}] [${routeInfo} Error] GROQ_API_KEY is not configured.`);
+      return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
     }
+
+    // Sanitize user messages in conversation log to prevent prompt injection
+    const sanitizedMessages = messages.map((m: { role: string; content: string }) => {
+      if (m.role === "user") {
+        return { ...m, content: sanitizeMessageContent(m.content) };
+      }
+      return m;
+    });
+
+    const modelName = "llama-3.3-70b-versatile";
 
     const response = await fetch(GROQ_API_URL, {
       method: "POST",
@@ -65,28 +116,35 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: modelName,
         messages: [
           { role: "system", content: WAVE_SYSTEM_PROMPT },
-          ...messages,
+          ...sanitizedMessages,
         ],
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 1000, // Hard limit of 1000 tokens
       }),
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Groq API error:", error);
-      return NextResponse.json({ error: "Failed to get response from AI" }, { status: 500 });
+      const errorText = await response.text();
+      console.error(`[${timestamp}] [${routeInfo} Error] Groq API response failed:`, errorText);
+      return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
     }
 
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content || "I'm having trouble responding right now. Please try again!";
+    
+    // Per-session token usage tracking & logging
+    const usage = data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    console.log(
+      `[WAVE AI Token Usage] timestamp="${timestamp}" session_id="${sessionId || "anonymous"}" model="${modelName}" ` +
+      `prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total_tokens=${usage.total_tokens}`
+    );
 
     return NextResponse.json({ reply });
   } catch (error) {
-    console.error("WAVE chat error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error(`[${timestamp}] [${routeInfo} Exception]`, error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -1,30 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaShoppingCart } from "react-icons/fa";
+import { FiShoppingCart } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
 
 export default function CartIcon() {
   const { itemCount } = useCart();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <Link
       href="/cart"
       aria-label={`Shopping cart, ${itemCount} item${itemCount !== 1 ? "s" : ""}`}
       className="relative flex items-center justify-center w-9 h-9 transition-colors duration-300"
-      style={{ color: "#A8A8A8" }}
+      style={{ color: "#FFFFFF" }}
       onMouseEnter={(e) =>
-        ((e.currentTarget as HTMLAnchorElement).style.color = "#F5F5F5")
+        ((e.currentTarget as HTMLAnchorElement).style.color = "#C9A84C")
       }
       onMouseLeave={(e) =>
-        ((e.currentTarget as HTMLAnchorElement).style.color = "#A8A8A8")
+        ((e.currentTarget as HTMLAnchorElement).style.color = "#FFFFFF")
       }
     >
-      <FaShoppingCart className="text-xl" />
+      <FiShoppingCart className="text-xl" />
 
       <AnimatePresence>
-        {itemCount > 0 && (
+        {mounted && itemCount > 0 && (
           <motion.span
             key="badge"
             initial={{ scale: 0, opacity: 0 }}

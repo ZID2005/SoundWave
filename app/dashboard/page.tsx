@@ -9,10 +9,7 @@ import {
   query,
   where,
   getDocs,
-  doc,
   addDoc,
-  setDoc,
-  deleteDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -217,7 +214,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0D0D0D" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#000000" }}>
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -241,7 +238,6 @@ export default function DashboardPage() {
   const getLoginMethod = (currentUser: typeof user) => {
     const providerId = currentUser.providerData?.[0]?.providerId || "";
     if (providerId.includes("phone")) return "Phone";
-    if (providerId.includes("facebook")) return "Facebook";
     return "Email";
   };
 
@@ -251,9 +247,6 @@ export default function DashboardPage() {
       const phone = currentUser.phoneNumber || "";
       if (phone.length <= 6) return phone;
       return phone.substring(0, 3) + "******" + phone.substring(phone.length - 4);
-    }
-    if (method === "Facebook") {
-      return currentUser.displayName || currentUser.email || "Facebook Linked Account";
     }
     return currentUser.email || "Email address";
   };
@@ -272,22 +265,27 @@ export default function DashboardPage() {
       // 2. Refresh the context user so components re-render with the new name instantly
       await refreshUser();
 
-      // 3. Save to database in the background without blocking the UI
-      setDoc(
-        doc(db, "users", user.uid),
-        {
-          displayName: editName,
-          updatedAt: serverTimestamp(),
+      // 3. Save to database via API
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
         },
-        { merge: true }
-      ).catch((err) => {
-        console.error("Background user profile database sync failed:", err);
+        body: JSON.stringify({ displayName: editName }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to update profile database.");
+      }
 
       toast.success("Profile display name updated!");
     } catch (e) {
       console.error(e);
-      toast.error("Failed to update name.");
+      const msg = e instanceof Error ? e.message : "Failed to update name.";
+      toast.error(msg);
     } finally {
       setIsSavingName(false);
     }
@@ -329,22 +327,34 @@ export default function DashboardPage() {
   const handleReorderBuild = async (build: SavedBuild) => {
     setIsReorderingId(build.id);
     try {
-      await addDoc(collection(db, "customOrders"), {
-        userId: user.uid,
-        userEmail: user.email || "",
-        type: build.type,
-        technology: build.technology,
-        tier: build.tier,
-        finish: build.finish,
-        notes: build.notes || "",
-        status: "pending",
-        createdAt: serverTimestamp(),
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/custom-orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          type: build.type,
+          technology: build.technology,
+          tier: build.tier,
+          finish: build.finish,
+          notes: build.notes || "",
+          buildName: build.name,
+        }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to place custom order.");
+      }
+
       toast.success("Custom configuration order submitted!");
       await fetchData();
     } catch (error) {
       console.error("Error placing custom order:", error);
-      toast.error("Failed to submit custom order.");
+      const msg = error instanceof Error ? error.message : "Failed to submit custom order.";
+      toast.error(msg);
     } finally {
       setIsReorderingId(null);
     }
@@ -353,12 +363,25 @@ export default function DashboardPage() {
   /* ── Delete Saved Build ── */
   const handleDeleteBuild = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "savedBuilds", id));
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/saved-builds?id=${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${idToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to delete saved build.");
+      }
+
       toast.success("Configuration deleted.");
       setSavedBuilds((prev) => prev.filter((b) => b.id !== id));
     } catch (error) {
       console.error("Error deleting configuration:", error);
-      toast.error("Failed to delete configuration.");
+      const msg = error instanceof Error ? error.message : "Failed to delete configuration.";
+      toast.error(msg);
     }
   };
 
@@ -960,6 +983,7 @@ export default function DashboardPage() {
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }
