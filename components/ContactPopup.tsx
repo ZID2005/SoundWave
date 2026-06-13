@@ -88,8 +88,8 @@ export default function ContactPopup({ isOpen, onClose, productName }: ContactPo
               </a>
 
               <a
-                href={`mailto:soundwave31330@gmail.com?subject=${emailSubject}`}
-                onClick={(e) => handleContactClick(e, `mailto:soundwave31330@gmail.com?subject=${emailSubject}`, "Email")}
+                href={`mailto:soundwave.sarga@gmail.com?subject=${emailSubject}`}
+                onClick={(e) => handleContactClick(e, `mailto:soundwave.sarga@gmail.com?subject=${emailSubject}`, "Email")}
                 className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-[#0066cc] hover:bg-[#005bb5] text-white rounded-xl font-bold tracking-wider transition-colors shadow-lg shadow-[#0066cc]/20"
               >
                 <FaEnvelope className="text-2xl" /> Send Email

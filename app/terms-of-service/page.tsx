@@ -246,7 +246,7 @@ export default function TermsOfServicePage() {
 
           <Section title="13. Contact Us">
             <BulletItem>
-              Email: <a href="mailto:soundwave31330@gmail.com" className="tos-link">soundwave31330@gmail.com</a>
+              Email: <a href="mailto:soundwave.sarga@gmail.com" className="tos-link">soundwave.sarga@gmail.com</a>
             </BulletItem>
             <BulletItem>
               WhatsApp: <a href="https://wa.me/919567931330" className="tos-link">+91 95679 31330</a>

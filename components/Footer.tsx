@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   FaInstagram,
-  FaYoutube,
   FaEnvelope,
   FaWhatsapp,
 } from "react-icons/fa";
@@ -15,8 +14,7 @@ const WAVEChatbot = dynamic(() => import("@/components/WAVEChatbot"), { ssr: fal
 
 const data = {
   instaLink: "https://www.instagram.com/soundwave.gear?igsh=MXNxaTA0Mjh4ZWs0dQ==",
-  twitterLink: "https://twitter.com/soundwave",
-  youtubeLink: "https://youtube.com/soundwave",
+  twitterLink: "https://x.com/SoundWavesarga",
   services: {
     amplifiers: "/products?category=amplifiers",
     speakers: "/products?category=speakers",
@@ -37,7 +35,7 @@ const data = {
     livechat: "#",
   },
   contact: {
-    email: "soundwave31330@gmail.com",
+    email: "soundwave.sarga@gmail.com",
     phone: "+91 95679 31330",
     address: "India",
   },
@@ -51,7 +49,6 @@ const data = {
 const socialLinks = [
   { icon: FaInstagram, label: "Instagram", href: data.instaLink },
   { icon: FaXTwitter, label: "Twitter", href: data.twitterLink },
-  { icon: FaYoutube, label: "YouTube", href: data.youtubeLink },
 ];
 
 const aboutLinks = [
@@ -77,9 +74,9 @@ const helpfulLinks = [
 ];
 
 const contactInfo = [
-  { icon: FaEnvelope, text: data.contact.email, href: `mailto:${data.contact.email}` },
-  { icon: FaWhatsapp, text: data.contact.phone, href: `https://wa.me/919567931330` },
-  { icon: FaInstagram, text: "@soundwave.gear", href: data.instaLink },
+  { icon: FaEnvelope, text: data.contact.email, href: `https://mail.google.com/mail/?view=cm&fs=1&to=${data.contact.email}&su=Inquiry%20from%20SoundWave%20Website`, isEmail: true },
+  { icon: FaWhatsapp, text: data.contact.phone, href: `https://wa.me/919567931330`, isEmail: false },
+  { icon: FaInstagram, text: "@soundwave.gear", href: data.instaLink, isEmail: false },
 ];
 
 export default function Footer() {
@@ -94,6 +91,11 @@ export default function Footer() {
     if (btn) {
       btn.click();
     }
+  };
+
+  const handleEmailClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    window.open(href, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -222,10 +224,12 @@ export default function Footer() {
                 <div className="text-center sm:text-left">
                   <p className="text-xs font-semibold tracking-widest text-primary uppercase">Contact Us</p>
                   <ul className="mt-6 space-y-3.5 text-sm">
-                    {contactInfo.map(({ icon: Icon, text, href }) => (
+                    {contactInfo.map(({ icon: Icon, text, href, isEmail }) => (
                       <li key={text}>
                         <a
                           href={href}
+                          onClick={isEmail ? (e) => handleEmailClick(e, href) : undefined}
+                          {...(!isEmail && { target: "_blank", rel: "noopener noreferrer" })}
                           className="flex items-center justify-center gap-2 sm:justify-start text-secondary/70 hover:text-primary transition-all duration-200"
                         >
                           <Icon className="text-primary size-4 shrink-0" />

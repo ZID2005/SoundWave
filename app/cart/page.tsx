@@ -224,6 +224,19 @@ export default function CartPage() {
     }
   }, [items.length, mounted]);
 
+  // Lock body scroll when modal is open — prevents footer from bleeding
+  // through the fixed overlay when the user scrolls
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
   const handleRemove = (id: string, name: string) => {
     removeFromCart(id);
     toast.success(`${name} removed`);
@@ -253,33 +266,99 @@ export default function CartPage() {
   const handleConfirmOrder = async () => {
     setIsSendingEmail(true);
     
+    // Format cart items for email and WhatsApp
+    const orderItemsText = items.map((item) =>
+      `${item.name} (${item.category.replace("-", " ")}) | Qty: ${item.quantity} | Price: ${formatPrice(parsePriceText(item.priceRangeText) * item.quantity)}`
+    ).join("\n");
+
+    // 1. Send admin email via EmailJS — Template 2 (Product Order Admin)
+    //    Sends to soundwave.sarga@gmail.com. No customer email — customer gets WhatsApp only.
     const emailPromise = (async () => {
       const serviceID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
-      const templateID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "";
+      const orderTemplateID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_2_ID || ""; // Template 2 — template_vgucfwt
       const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
 
-      const templateParams = {
+      if (!serviceID || !orderTemplateID || !publicKey) {
+        console.log("EmailJS keys missing — skipping cart admin email.");
+        return;
+      }
+
+      const dateStr = new Date().toLocaleDateString("en-IN");
+
+      // All fields use "N/A" fallback — never pass undefined to EmailJS
+      const adminParams = {
         customer_name: user?.displayName || user?.email || "Guest User",
         customer_phone: user?.phoneNumber || "N/A",
-        customer_email: user?.email || "N/A",
-        subject: `New Order — ${user?.displayName || user?.email || "Guest"} — ₹${subtotal.toLocaleString("en-IN")}`,
-        order_items: items
-          .map(
-            (item) =>
-              `• Name: ${item.name}\n  Category: ${item.category}\n  Quantity: ${item.quantity}\n  Unit Price: ${formatPrice(
-                parsePriceText(item.priceRangeText)
-              )}\n  Total: ${formatPrice(parsePriceText(item.priceRangeText) * item.quantity)}`
-          )
-          .join("\n\n"),
-        grand_total: formatPrice(subtotal),
-        timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-        to_email: "soundwave31330@gmail.com",
+        customer_email: user?.email || "Phone login",
+        submitted_at: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        // Order items as plain text and as HTML rows
+        order_items_list: orderItemsText,
+        order_items_html: items.map(item =>
+          `<tr style="border-bottom:1px solid #222;">` +
+          `<td style="color:#fff;font-size:13px;padding:12px 8px;width:35%;">${item.name}</td>` +
+          `<td style="color:#888;font-size:13px;padding:12px 8px;width:20%;">${item.category.replace("-", " ")}</td>` +
+          `<td style="color:#fff;font-size:13px;padding:12px 8px;width:10%;text-align:center;">${item.quantity}</td>` +
+          `<td style="color:#888;font-size:13px;padding:12px 8px;width:17%;text-align:right;">${formatPrice(parsePriceText(item.priceRangeText))}</td>` +
+          `<td style="color:#C9A84C;font-size:13px;font-weight:600;padding:12px 8px;width:18%;text-align:right;">${formatPrice(parsePriceText(item.priceRangeText) * item.quantity)}</td>` +
+          `</tr>`
+        ).join(""),
+        total_amount: String(subtotal),
+        // WhatsApp reply link
+        customer_phone_number: user?.phoneNumber || "",
+        // Legacy fallback fields
+        name: user?.displayName || user?.email || "Guest User",
+        email: user?.email || "Phone login",
+        phone: user?.phoneNumber || "N/A",
+        date: dateStr,
+        requirements: orderItemsText,
+        tier: "Product Order Enquiry",
+        budget: formatPrice(subtotal).replace("₹", ""),
+        to_email: "soundwave.sarga@gmail.com",
+        message: `🛒 NEW PRODUCT ORDER — SOUNDWAVE\n\n` +
+          `👤 Customer: ${user?.displayName || user?.email || "Guest User"}\n` +
+          `📧 Email: ${user?.email || "Phone login"}\n` +
+          `📞 Phone: ${user?.phoneNumber || "N/A"}\n\n` +
+          `📦 ORDER ITEMS:\n${orderItemsText}\n\n` +
+          `💰 Total Amount: ${formatPrice(subtotal)}\n\n` +
+          `📅 Date: ${dateStr}`,
       };
 
-      if (serviceID && templateID && publicKey) {
-        await emailjs.send(serviceID, templateID, templateParams, publicKey);
-      } else {
-        console.log("Mock EmailJS send since keys are missing:", templateParams);
+      try {
+        await emailjs.send(serviceID, orderTemplateID, adminParams, { publicKey });
+        console.log("✅ Template 2 admin email sent (Product Order)");
+      } catch (err) {
+        console.error("❌ Admin email (Template 2) failed:", err);
+        // Never rethrow — email failure must not block order success
+      }
+    })();
+
+    // 2. Send customer confirmation via WhatsApp (Twilio) — skip silently if no phone
+    const whatsappPromise = (async () => {
+      try {
+        const response = await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "product_order",
+            customerPhone: user?.phoneNumber || "",
+            customerName: user?.displayName || user?.email || "Customer",
+            orderDetails: {
+              items: items.map(item => ({
+                name: item.name || "N/A",
+                quantity: item.quantity,
+                price: formatPrice(parsePriceText(item.priceRangeText) * item.quantity),
+              })),
+              totalAmount: String(subtotal),
+            },
+          }),
+        });
+
+        if (!response.ok) throw new Error("Customer WhatsApp API failed");
+        const resData = await response.json();
+        console.log("Customer WhatsApp result:", resData.whatsappSuccess ? "✅ Sent" : "⚠️ Skipped (no phone)");
+      } catch (err) {
+        // Never block user flow for notification failures
+        console.error("Customer WhatsApp dispatch failed (non-blocking):", err);
       }
     })();
 
@@ -287,6 +366,7 @@ export default function CartPage() {
       // Force at least 1.5 seconds loading state to show progress animation
       await Promise.all([
         emailPromise,
+        whatsappPromise,
         new Promise((resolve) => setTimeout(resolve, 1500)),
       ]);
 
@@ -295,7 +375,7 @@ export default function CartPage() {
       clearCart();
       toast.success("Order request sent successfully!");
     } catch (err) {
-      console.error("EmailJS sending failed:", err);
+      console.error("Order confirmation failed:", err);
       setIsSendingEmail(false);
       toast.error("Failed to submit order. Please try again.");
     }
@@ -1594,7 +1674,7 @@ export default function CartPage() {
                                 textAlign: "center",
                               }}
                             >
-                              Your order details including product specifications, quantity, and pricing will be sent to our team at <strong style={{ color: "#ffffff" }}>soundwave31330@gmail.com</strong>. We will contact you within 24 hours to confirm on {user?.phoneNumber ? "your registered number" : `your registered email: ${user?.email || ""}`}.
+                              Your order details including product specifications, quantity, and pricing will be sent to our team at <strong style={{ color: "#ffffff" }}>soundwave.sarga@gmail.com</strong>. We will contact you within 24 hours to confirm on {user?.phoneNumber ? "your registered number" : `your registered email: ${user?.email || ""}`}.
                             </p>
 
                             <motion.button
@@ -1761,13 +1841,13 @@ export default function CartPage() {
 
                       {/* Email Button */}
                       <a
-                        href="mailto:soundwave31330@gmail.com"
+                        href="mailto:soundwave.sarga@gmail.com"
                         className="connect-btn connect-btn-email"
                       >
                         <EmailIcon />
                         <div className="connect-btn-text-container">
                           <span className="connect-btn-title">Send an Email</span>
-                          <span className="connect-btn-subtitle">soundwave31330@gmail.com</span>
+                          <span className="connect-btn-subtitle">soundwave.sarga@gmail.com</span>
                         </div>
                       </a>
 

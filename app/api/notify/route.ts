@@ -6,166 +6,137 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { type, buildDetails, channels } = body;
+    const { type, customerPhone, customerName, buildDetails, orderDetails } = body;
 
-    if (type !== "custom_build" || !buildDetails) {
-      return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+    if (!type || (type !== "custom_build" && type !== "product_order")) {
+      return NextResponse.json({ error: "Invalid request payload — type must be 'custom_build' or 'product_order'" }, { status: 400 });
     }
 
-    const {
-      customerName,
-      customerEmail,
-      customerPhone,
-      buildName,
-      type: buildType,
-      technology,
-      tier,
-      finish,
-      notes,
-      fileUrl,
-    } = buildDetails;
+    // Customer phone is required for WhatsApp — skip silently if missing
+    if (!customerPhone || customerPhone === "N/A" || customerPhone === "") {
+      console.log(`[${timestamp}] [${routeInfo}] No customer phone number — skipping customer WhatsApp notification.`);
+      return NextResponse.json({ success: true, whatsappSuccess: false, reason: "no_phone" });
+    }
 
-    const priceRangeMap: Record<string, string> = {
-      Essential: "₹25,000 – ₹35,000",
-      Premium: "₹75,000 – ₹2,00,000",
-      APEX: "₹2,00,000+",
-    };
-    const priceRange = priceRangeMap[tier] || "N/A";
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_FROM_NUMBER;
 
-    const formattedNotes = notes ? notes.trim() : "None";
-    const formattedFileUrl = fileUrl || "None";
+    let messageText = "";
 
+    if (type === "custom_build") {
+      // ── Customer WhatsApp for Custom Build ──────────────────────────────
+      if (!buildDetails) {
+        return NextResponse.json({ error: "buildDetails required for custom_build type" }, { status: 400 });
+      }
+
+      const priceRangeMap: Record<string, string> = {
+        Essential: "₹25,000 – ₹35,000",
+        Premium: "₹75,000 – ₹2,00,000",
+        APEX: "₹2,00,000+",
+      };
+      const priceRange = priceRangeMap[buildDetails.tier] || "N/A";
+
+      messageText =
+        `🔊 SOUNDWAVE — Build Received!\n\n` +
+        `Hi ${customerName || "there"},\n\n` +
+        `Your custom build has been submitted successfully!\n\n` +
+        `🎛️ Configuration Summary:\n` +
+        `• Type: ${buildDetails.type || "N/A"}\n` +
+        `• Technology: ${buildDetails.technology || "N/A"}\n` +
+        `• Tier: ${buildDetails.tier || "N/A"} (${priceRange})\n` +
+        `• Color: ${buildDetails.finish || "N/A"}\n\n` +
+        `✅ Our team will review your build and contact you within 24 hours to confirm pricing and next steps.\n\n` +
+        `Questions? WhatsApp us: +91 95679 31330\n` +
+        `or Instagram: @soundwave.gear\n\n` +
+        `— Team SOUNDWAVE`;
+
+    } else if (type === "product_order") {
+      // ── Customer WhatsApp for Product Order ──────────────────────────────
+      if (!orderDetails) {
+        return NextResponse.json({ error: "orderDetails required for product_order type" }, { status: 400 });
+      }
+
+      const { items, totalAmount } = orderDetails;
+      const orderItemsList = Array.isArray(items)
+        ? items.map((item: { name: string; quantity: number; price: string }) =>
+            `• ${item.name} x${item.quantity} — ${item.price}`
+          ).join("\n")
+        : "N/A";
+
+      messageText =
+        `🛒 SOUNDWAVE — Order Received!\n\n` +
+        `Hi ${customerName || "there"},\n\n` +
+        `We have received your order enquiry!\n\n` +
+        `📦 Order Summary:\n` +
+        `${orderItemsList}\n\n` +
+        `💰 Total: ₹${totalAmount || "0"}\n\n` +
+        `✅ Our team will contact you within 24 hours to confirm your order and arrange delivery and payment.\n\n` +
+        `Questions? WhatsApp us: +91 95679 31330\n` +
+        `or Instagram: @soundwave.gear\n\n` +
+        `— Team SOUNDWAVE`;
+    }
+
+    // ── Send WhatsApp via Twilio ──────────────────────────────────────────
     let whatsappSuccess = false;
-    let emailSuccess = false;
 
-    // Determine which channels to send to
-    const targetChannels = channels || ["whatsapp", "email"];
+    if (accountSid && authToken && fromNumber) {
+      try {
+        const credentials = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+        const formattedFrom = fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`;
 
-    // 1. Send WhatsApp via Twilio
-    if (targetChannels.includes("whatsapp")) {
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      const fromNumber = process.env.TWILIO_FROM_NUMBER;
+        // Normalise customer phone — strip spaces, ensure + prefix
+        let toPhone = customerPhone.replace(/\s/g, "");
+        if (!toPhone.startsWith("+")) {
+          toPhone = `+${toPhone}`;
+        }
+        const formattedTo = `whatsapp:${toPhone}`;
 
-      const messageText = `🔊 NEW CUSTOM BUILD SUBMISSION - SOUNDWAVE\n\n` +
-        `👤 Customer: ${customerName}\n` +
-        `📧 Email: ${customerEmail}\n` +
-        `📞 Phone: ${customerPhone}\n\n` +
-        `🎛️ BUILD DETAILS:\n` +
-        `• Name: ${buildName}\n` +
-        `• Type: ${buildType}\n` +
-        `• Technology: ${technology}\n` +
-        `• Tier: ${tier} (${priceRange})\n` +
-        `• Finish: ${finish}\n` +
-        `• Notes: ${formattedNotes}\n` +
-        `• Image: ${formattedFileUrl}\n\n` +
-        `📅 Date: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`;
+        const twilioBody = new URLSearchParams({
+          To: formattedTo,
+          From: formattedFrom,
+          Body: messageText,
+        });
 
-      if (accountSid && authToken && fromNumber) {
-        try {
-          const credentials = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-          const formattedFrom = fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`;
-          
-          const twilioBody = new URLSearchParams({
-            To: "whatsapp:+919567931330",
-            From: formattedFrom,
-            Body: messageText,
-          });
-
-          const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        const res = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+          {
             method: "POST",
             headers: {
-              "Authorization": `Basic ${credentials}`,
+              Authorization: `Basic ${credentials}`,
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: twilioBody.toString(),
-          });
-
-          if (res.ok) {
-            whatsappSuccess = true;
-          } else {
-            const errText = await res.text();
-            console.error(`[${timestamp}] [${routeInfo}] Twilio API returned error:`, errText);
           }
-        } catch (twilioErr) {
-          console.error(`[${timestamp}] [${routeInfo}] Twilio dispatch failed:`, twilioErr);
+        );
+
+        if (res.ok) {
+          whatsappSuccess = true;
+          console.log(`[${timestamp}] [${routeInfo}] ✅ Customer WhatsApp sent to ${formattedTo}`);
+        } else {
+          const errText = await res.text();
+          console.error(`[${timestamp}] [${routeInfo}] ❌ Twilio API error:`, errText);
         }
-      } else {
-        console.log(`[${timestamp}] [${routeInfo} Mock Twilio] Credentials missing. Message:`, messageText);
-        whatsappSuccess = true; // Fallback to success for mockup/local development flow
+      } catch (twilioErr) {
+        console.error(`[${timestamp}] [${routeInfo}] ❌ Twilio dispatch failed:`, twilioErr);
       }
+    } else {
+      // Credentials missing — log and treat as success for local dev
+      console.log(`[${timestamp}] [${routeInfo}] ⚠️ Twilio credentials missing — mock customer WhatsApp:`, messageText);
+      whatsappSuccess = true;
     }
 
-    // 2. Send Email via EmailJS REST API
-    if (targetChannels.includes("email")) {
-      const serviceID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID;
-      const templateID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID;
-      const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY;
-      const privateKey = process.env.EMAILJS_PRIVATE_KEY;
-
-      const templateParams = {
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail,
-        subject: `New Custom Build — ${customerName} — ${buildName} — ${priceRange}`,
-        order_items: `• Configuration Name: ${buildName}
-Type: ${buildType}
-Technology: ${technology}
-Tier: ${tier} (Price Range: ${priceRange})
-Finish: ${finish}
-Special Notes: ${formattedNotes}
-Reference Image: ${formattedFileUrl}`,
-        grand_total: priceRange,
-        timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-        to_email: "soundwave31330@gmail.com",
-      };
-
-      if (serviceID && templateID && publicKey) {
-        try {
-          const emailJsBody = {
-            service_id: serviceID,
-            template_id: templateID,
-            user_id: publicKey,
-            template_params: templateParams,
-            ...(privateKey ? { accessToken: privateKey } : {}),
-          };
-
-          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(emailJsBody),
-          });
-
-          if (res.ok) {
-            emailSuccess = true;
-          } else {
-            const errText = await res.text();
-            console.error(`[${timestamp}] [${routeInfo}] EmailJS API returned error:`, errText);
-          }
-        } catch (emailJsErr) {
-          console.error(`[${timestamp}] [${routeInfo}] EmailJS server dispatch failed:`, emailJsErr);
-        }
-      } else {
-        console.log(`[${timestamp}] [${routeInfo} Mock EmailJS] Keys missing. Params:`, templateParams);
-        emailSuccess = true; // Fallback to success for mockup/local development flow
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      whatsappSuccess,
-      emailSuccess,
-    });
+    return NextResponse.json({ success: true, whatsappSuccess });
 
   } catch (error) {
     console.error(`[${timestamp}] [${routeInfo} Exception]`, error);
-    return NextResponse.json({
-      success: false,
-      whatsappSuccess: false,
-      emailSuccess: false,
-      error: error instanceof Error ? error.message : "Internal server error",
-    }, { status: 200 }); // Always return 200 to fail gracefully as per requirement
+    return NextResponse.json(
+      {
+        success: false,
+        whatsappSuccess: false,
+        error: error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 200 } // Always 200 — never block user flow
+    );
   }
 }

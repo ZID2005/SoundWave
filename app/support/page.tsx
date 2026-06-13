@@ -347,10 +347,10 @@ export default function SupportPage() {
                 </svg>
               }
               title="Send an Email"
-              detail="soundwave31330@gmail.com"
+              detail="soundwave.sarga@gmail.com"
               subtext="We respond within 24 hours"
               btnLabel="Send Email"
-              btnHref="mailto:soundwave31330@gmail.com"
+              btnHref="mailto:soundwave.sarga@gmail.com"
               btnColor="#C9A84C"
             />
 

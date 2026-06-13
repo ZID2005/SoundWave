@@ -209,7 +209,7 @@ export default function BuildYourSoundPage() {
     const priceRange = formData.tier ? (priceRangeMap[formData.tier] || "N/A") : "N/A";
     const name = buildName.trim() || `Custom ${formData.type || "Build"}`;
 
-    // 1. Save order to Firebase Firestore (via custom-orders endpoint)
+    // 1. Save order to Firebase Firestore FIRST — always before notifications
     const savePromise = (async () => {
       const idToken = await user.getIdToken();
       const response = await fetch("/api/custom-orders", {
@@ -236,76 +236,89 @@ export default function BuildYourSoundPage() {
       return response.json();
     })();
 
-    // 2. Send Twilio WhatsApp notification via /api/notify API route
+    // 2. Send admin email via EmailJS — Template 1 (Custom Build Admin)
+    //    Sends to soundwave.sarga@gmail.com. No customer email sent — customer gets WhatsApp.
+    const emailPromise = (async () => {
+      try {
+        const serviceID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
+        const adminTemplateID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || ""; // Template 1 — template_s2dh4cg
+        const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
+
+        if (!serviceID || !adminTemplateID || !publicKey) {
+          console.log("EmailJS keys missing — skipping admin email notification.");
+          setEmailSent(false);
+          return;
+        }
+
+        // All fields use "N/A" fallback — never pass undefined to EmailJS
+        const dateStr = new Date().toLocaleDateString("en-IN");
+        const requirementsText =
+          `Type: ${formData.type || "N/A"} | Technology: ${formData.technology || "N/A"}` +
+          ` | Finish: ${formData.type === "Sound System" ? "N/A" : (formData.finish || "N/A")}` +
+          ` | Notes: ${formData.notes || "None"}` +
+          ` | Reference Image: ${fileUrl || "None"}`;
+
+        const adminParams = {
+          customer_name: user?.displayName || user?.email || "Guest User",
+          customer_phone: user?.phoneNumber || "N/A",
+          customer_email: user?.email || "Phone login",
+          submitted_at: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+          product_type: formData.type || "N/A",
+          technology: formData.technology || "N/A",
+          tier: formData.tier || "N/A",
+          price_range: priceRange,
+          color: (formData.type === "Sound System" ? "N/A" : formData.finish) || "N/A",
+          special_notes: formData.notes || "None",
+          reference_images: fileUrl || "None provided",
+          // Template 1 subject/body variables — must be present
+          date: dateStr,
+          requirements: requirementsText,
+          budget: priceRange,
+          // WhatsApp reply link variable
+          customer_phone_number: user?.phoneNumber || "",
+          // Legacy fallback fields
+          name: user?.displayName || user?.email || "Guest User",
+          email: user?.email || "Phone login",
+          phone: user?.phoneNumber || "N/A",
+          to_email: "soundwave.sarga@gmail.com",
+        };
+
+        await emailjs.send(serviceID, adminTemplateID, adminParams, { publicKey });
+        console.log("✅ Template 1 admin email sent (Custom Build)");
+        setEmailSent(true);
+      } catch (err) {
+        console.error("❌ Admin email (Template 1) failed:", err);
+        setEmailSent(false);
+      }
+    })();
+
+    // 3. Send customer confirmation via WhatsApp (Twilio) — skip silently if no phone
     const whatsappPromise = (async () => {
       try {
         const response = await fetch("/api/notify", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: "custom_build",
-            channels: ["whatsapp"],
+            customerPhone: user?.phoneNumber || "",
+            customerName: user?.displayName || user?.email || "Customer",
             buildDetails: {
-              customerName: user.displayName || user.email || "Guest User",
-              customerEmail: user.email || "N/A",
-              customerPhone: user.phoneNumber || "N/A",
-              buildName: name,
-              type: formData.type,
-              technology: formData.technology,
-              tier: formData.tier,
-              finish: formData.type === "Sound System" ? "N/A" : formData.finish,
-              notes: formData.notes,
-              fileUrl: fileUrl,
+              type: formData.type || "N/A",
+              technology: formData.technology || "N/A",
+              tier: formData.tier || "N/A",
+              finish: (formData.type === "Sound System" ? "N/A" : formData.finish) || "N/A",
+              notes: formData.notes || "None",
             },
           }),
         });
 
-        if (!response.ok) throw new Error("WhatsApp notification API failed");
+        if (!response.ok) throw new Error("Customer WhatsApp API failed");
         const resData = await response.json();
         setWhatsappSent(!!resData.whatsappSuccess);
       } catch (err) {
-        console.error("WhatsApp notification dispatch failed:", err);
+        // Never block user flow for notification failures
+        console.error("Customer WhatsApp dispatch failed (non-blocking):", err);
         setWhatsappSent(false);
-      }
-    })();
-
-    // 3. Send Email via EmailJS directly from client
-    const emailPromise = (async () => {
-      const serviceID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "";
-      const templateID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "";
-      const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || "";
-
-      if (!serviceID || !templateID || !publicKey) {
-        console.log("Mock EmailJS send since keys are missing.");
-        setEmailSent(true); // Fallback to true in local mockup to show pill
-        return;
-      }
-
-      const templateParams = {
-        customer_name: user?.displayName || user?.email || "Guest User",
-        customer_phone: user?.phoneNumber || "N/A",
-        customer_email: user?.email || "N/A",
-        subject: `New Custom Build — ${user?.displayName || user?.email || "Guest"} — ${name} — ${priceRange}`,
-        order_items: `• Configuration Name: ${name}
-Type: ${formData.type}
-Technology: ${formData.technology}
-Tier: ${formData.tier} (Price Range: ${priceRange})
-Finish: ${formData.type === "Sound System" ? "N/A" : formData.finish}
-Special Notes: ${formData.notes || "None"}
-Reference Image: ${fileUrl ? fileUrl : "None"}`,
-        grand_total: priceRange,
-        timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-        to_email: "soundwave31330@gmail.com",
-      };
-
-      try {
-        await emailjs.send(serviceID, templateID, templateParams, publicKey);
-        setEmailSent(true);
-      } catch (err) {
-        console.error("EmailJS sending failed:", err);
-        setEmailSent(false);
       }
     })();
 
@@ -321,10 +334,11 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
     setRandomQuote(chosenQuote);
 
     try {
-      // Execute all three, savePromise is critical, notifications fail gracefully
-      await Promise.all([savePromise, whatsappPromise, emailPromise]);
-      
-      // Successfully complete submission, trigger cinematic success screen
+      // Firestore save is critical and will throw on failure.
+      // Email + WhatsApp run in parallel and fail gracefully (never throw).
+      await Promise.all([savePromise, emailPromise, whatsappPromise]);
+
+      // Successfully complete submission — trigger cinematic success screen
       setShowCinematicSuccess(true);
     } catch (err) {
       console.error("Custom order submission failed:", err);
@@ -1296,105 +1310,91 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#000000] overflow-hidden p-4"
+            style={{ willChange: "opacity" }}
           >
-            {/* Apple-style aurora background animation */}
-            <div 
+            {/* Aurora background — GPU-promoted blobs */}
+            <div
               className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
-              style={{
-                filter: "blur(80px)",
-                WebkitFilter: "blur(80px)"
-              }}
+              style={{ filter: "blur(60px)", WebkitFilter: "blur(60px)" }}
             >
-              {/* Deep Gold Blob */}
-              <div 
-                className="absolute w-[80vw] h-[80vw] rounded-full aurora-blob"
+              <div
+                className="absolute w-[80vw] h-[80vw] rounded-full"
                 style={{
                   background: "radial-gradient(circle, rgba(201, 168, 76, 0.12) 0%, transparent 70%)",
-                  top: "-10vh",
-                  left: "-10vw",
+                  top: "-10vh", left: "-10vw",
+                  transform: "translate3d(0,0,0)",
+                  willChange: "transform",
                   animation: "auroraGoldDrift 25s infinite ease-in-out"
                 }}
               />
-              {/* Deep Blue Blob */}
-              <div 
-                className="absolute w-[80vw] h-[80vw] rounded-full aurora-blob"
+              <div
+                className="absolute w-[80vw] h-[80vw] rounded-full"
                 style={{
                   background: "radial-gradient(circle, rgba(30, 60, 120, 0.1) 0%, transparent 70%)",
-                  bottom: "-10vh",
-                  right: "-10vw",
+                  bottom: "-10vh", right: "-10vw",
+                  transform: "translate3d(0,0,0)",
+                  willChange: "transform",
                   animation: "auroraBlueDrift 25s infinite ease-in-out"
                 }}
               />
-              {/* Teal Blob */}
-              <div 
-                className="absolute w-[80vw] h-[80vw] rounded-full aurora-blob"
+              <div
+                className="absolute w-[80vw] h-[80vw] rounded-full"
                 style={{
                   background: "radial-gradient(circle, rgba(0, 161, 179, 0.06) 0%, transparent 70%)",
-                  top: "20vh",
-                  left: "20vw",
+                  top: "20vh", left: "20vw",
+                  transform: "translate3d(0,0,0)",
+                  willChange: "transform",
                   animation: "auroraTealDrift 25s infinite ease-in-out"
-                }}
-              />
-              {/* Noise/grain texture overlay at 3% opacity */}
-              <div 
-                className="absolute inset-0 opacity-[0.03]"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                  filter: "none",
-                  WebkitFilter: "none"
                 }}
               />
             </div>
 
             {/* Center glassmorphic card */}
             <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
+              initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.45, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
               className="relative z-10 w-full max-w-[520px] rounded-[28px] border p-12 flex flex-col items-center justify-center"
               style={{
                 background: "rgba(255, 255, 255, 0.05)",
-                backdropFilter: "blur(40px) saturate(180%)",
-                WebkitBackdropFilter: "blur(40px) saturate(180%)",
+                backdropFilter: "blur(24px) saturate(160%)",
+                WebkitBackdropFilter: "blur(24px) saturate(160%)",
                 borderColor: "rgba(255, 255, 255, 0.15)",
-                boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 24px 70px rgba(0, 0, 0, 0.7)"
+                boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 24px 70px rgba(0, 0, 0, 0.7)",
+                willChange: "transform, opacity",
               }}
             >
               {/* Animated checkmark */}
               <div className="flex justify-center mb-6">
                 <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none">
                   <motion.circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="#C9A84C"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
+                    cx="50" cy="50" r="40"
+                    stroke="#C9A84C" strokeWidth="2.5" strokeLinecap="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.8, delay: 0.9, ease: "easeInOut" }}
+                    transition={{ duration: 0.7, delay: 0.55, ease: "easeInOut" }}
+                    style={{ willChange: "stroke-dashoffset" }}
                   />
                   <motion.path
                     d="M35 52 L47 64 L65 38"
-                    stroke="#C9A84C"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    stroke="#C9A84C" strokeWidth="3.5"
+                    strokeLinecap="round" strokeLinejoin="round"
                     initial={{ pathLength: 0 }}
                     animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.4, delay: 1.7, ease: "easeOut" }}
+                    transition={{ duration: 0.35, delay: 1.25, ease: "easeOut" }}
+                    style={{ willChange: "stroke-dashoffset" }}
                   />
                 </svg>
               </div>
 
               {/* Heading */}
               <motion.h2
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 1.05, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 0.7, ease: "easeOut" }}
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
                   fontSize: "32px",
@@ -1403,7 +1403,8 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                   textAlign: "center",
                   fontWeight: 600,
                   marginBottom: "16px",
-                  lineHeight: 1.2
+                  lineHeight: 1.2,
+                  willChange: "transform, opacity",
                 }}
               >
                 Your Build Has Been Submitted
@@ -1413,7 +1414,7 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.20, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 0.85, ease: "easeOut" }}
                 style={{
                   fontFamily: "'Inter', sans-serif",
                   fontWeight: 400,
@@ -1421,7 +1422,8 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                   color: "rgba(255, 255, 255, 0.6)",
                   lineHeight: 1.7,
                   textAlign: "center",
-                  marginBottom: "28px"
+                  marginBottom: "28px",
+                  willChange: "opacity",
                 }}
               >
                 Our engineers will review your configuration and reach out to you within 24 hours to confirm pricing and next steps.
@@ -1431,16 +1433,14 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.35, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 1.0, ease: "easeOut" }}
                 className="flex flex-wrap gap-3 justify-center items-center mb-8"
+                style={{ willChange: "opacity" }}
               >
                 {whatsappSent && (
-                  <div 
+                  <div
                     className="flex items-center gap-2 px-4 py-2 rounded-full"
-                    style={{
-                      backgroundColor: "rgba(37, 211, 102, 0.1)",
-                      border: "1px solid rgba(37, 211, 102, 0.25)"
-                    }}
+                    style={{ backgroundColor: "rgba(37, 211, 102, 0.1)", border: "1px solid rgba(37, 211, 102, 0.25)" }}
                   >
                     <FaWhatsapp className="text-[#25D366] text-sm" />
                     <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "#86868b", fontWeight: 500 }}>
@@ -1449,12 +1449,9 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                   </div>
                 )}
                 {emailSent && (
-                  <div 
+                  <div
                     className="flex items-center gap-2 px-4 py-2 rounded-full"
-                    style={{
-                      backgroundColor: "rgba(201, 168, 76, 0.1)",
-                      border: "1px solid rgba(201, 168, 76, 0.25)"
-                    }}
+                    style={{ backgroundColor: "rgba(201, 168, 76, 0.1)", border: "1px solid rgba(201, 168, 76, 0.25)" }}
                   >
                     <FaEnvelope className="text-[#C9A84C] text-sm" />
                     <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "12px", color: "#86868b", fontWeight: 500 }}>
@@ -1469,13 +1466,14 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                 <motion.div
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.5, delay: 1.50, ease: "easeInOut" }}
+                  transition={{ duration: 0.45, delay: 1.1, ease: "easeInOut" }}
                   style={{
                     height: "1px",
                     background: "linear-gradient(to right, transparent, #C9A84C 20%, #C9A84C 80%, transparent)",
                     width: "100%",
                     maxWidth: "360px",
                     transformOrigin: "left",
+                    willChange: "transform",
                   }}
                 />
               </div>
@@ -1484,7 +1482,7 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.65, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 1.2, ease: "easeOut" }}
                 style={{
                   fontFamily: "'Cormorant Garamond', Georgia, serif",
                   fontStyle: "italic",
@@ -1493,7 +1491,8 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                   textAlign: "center",
                   marginBottom: "36px",
                   lineHeight: 1.5,
-                  maxWidth: "400px"
+                  maxWidth: "400px",
+                  willChange: "opacity",
                 }}
               >
                 &ldquo;{randomQuote}&rdquo;
@@ -1503,7 +1502,7 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.80, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 1.3, ease: "easeOut" }}
                 onClick={handleBackToHome}
                 style={{
                   borderRadius: "980px",
@@ -1518,7 +1517,8 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
                   cursor: "pointer",
                   border: "none",
                   transition: "all 0.3s ease",
-                  boxShadow: "0 4px 14px rgba(201, 168, 76, 0.3)"
+                  boxShadow: "0 4px 14px rgba(201, 168, 76, 0.3)",
+                  willChange: "opacity",
                 }}
                 className="hover:scale-[1.03] active:scale-[0.98]"
               >
@@ -1530,27 +1530,19 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 1.0, delay: 2.3 }}
+              transition={{ duration: 0.8, delay: 1.6 }}
               className="w-full mt-12 relative overflow-hidden flex justify-center"
               style={{
                 maxWidth: "600px",
                 maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
-                WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)"
+                WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
+                willChange: "opacity",
               }}
             >
-              <div 
-                className="whitespace-nowrap py-2 select-none pointer-events-none"
-                style={{
-                  width: "100%",
-                  overflow: "hidden"
-                }}
-              >
-                <div 
+              <div className="whitespace-nowrap py-2 select-none pointer-events-none" style={{ width: "100%", overflow: "hidden" }}>
+                <div
                   className="inline-flex gap-8 ticker-text"
-                  style={{
-                    animation: "tickerScrollLeftToRight 30s linear infinite",
-                    display: "inline-flex"
-                  }}
+                  style={{ animation: "tickerScrollLeftToRight 30s linear infinite", display: "inline-flex", willChange: "transform" }}
                 >
                   <span>ENGINEERED FOR THOSE WHO HEAR MORE</span>
                   <span>◆</span>
@@ -1578,12 +1570,9 @@ Reference Image: ${fileUrl ? fileUrl : "None"}`,
             </motion.div>
 
             {/* Subtle countdown bar indicator */}
-            <div 
-              className="absolute bottom-0 left-0 h-1 bg-[#C9A84C] transition-all"
-              style={{
-                width: `${(countdown / 8) * 100}%`,
-                transition: "width 30ms linear"
-              }}
+            <div
+              className="absolute bottom-0 left-0 h-1 bg-[#C9A84C]"
+              style={{ width: `${(countdown / 8) * 100}%`, transition: "width 30ms linear", willChange: "width" }}
             />
           </motion.div>
         )}

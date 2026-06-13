@@ -233,7 +233,7 @@ export default function PrivacyPolicyPage() {
             </div>
             <p style={{ marginTop: "0.85rem" }}>
               To exercise any of these rights, contact us at{" "}
-              <a href="mailto:soundwave31330@gmail.com" className="policy-link">soundwave31330@gmail.com</a>.
+              <a href="mailto:soundwave.sarga@gmail.com" className="policy-link">soundwave.sarga@gmail.com</a>.
             </p>
           </Section>
 
@@ -253,7 +253,7 @@ export default function PrivacyPolicyPage() {
 
           <Section title="11. Contact for Privacy Concerns" delay={0.15}>
             <div className="policy-li">
-              Email: <a href="mailto:soundwave31330@gmail.com" className="policy-link">soundwave31330@gmail.com</a>
+              Email: <a href="mailto:soundwave.sarga@gmail.com" className="policy-link">soundwave.sarga@gmail.com</a>
             </div>
             <div className="policy-li">
               WhatsApp: <a href="https://wa.me/919567931330" className="policy-link">+91 95679 31330</a>

@@ -119,7 +119,7 @@ const faqCategories = [
       },
       {
         q: "How can I contact support?",
-        a: "WhatsApp: +91 95679 31330 (fastest — typically reply within 2 hours) / Email: soundwave31330@gmail.com / Instagram: @soundwave.gear. Or just ask WAVE for instant help with any product or audio question!",
+        a: "WhatsApp: +91 95679 31330 (fastest — typically reply within 2 hours) / Email: soundwave.sarga@gmail.com / Instagram: @soundwave.gear. Or just ask WAVE for instant help with any product or audio question!",
       },
     ],
   },

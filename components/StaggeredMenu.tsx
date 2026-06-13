@@ -8,7 +8,6 @@ import { Outfit } from 'next/font/google';
 import { gsap } from 'gsap';
 import CartIcon from '@/components/CartIcon';
 import { ShinyButton } from '@/components/ShinyButton';
-import { StarButton } from '@/components/StarButton';
 import { cn } from '@/lib/utils';
 
 const outfit = Outfit({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'] });
@@ -498,35 +497,25 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                   </ShinyButton>
                 </Link>
               ) : (
-                <div className="flex items-center gap-4">
-                  <StarButton
+                <div className="flex items-center gap-2">
+                  <button
                     onClick={() => {
                       setAuthInitialMode("login");
                       setShowAuthModal(true);
                     }}
-                    duration={3}
-                    lightWidth={100}
-                    lightColor="#FAFAFA"
-                    backgroundColor="currentColor"
-                    borderWidth={2}
-                    className="bg-[#111111] text-[11px]"
+                    className="nav-auth-login"
                   >
                     Login
-                  </StarButton>
-                  <StarButton
+                  </button>
+                  <button
                     onClick={() => {
                       setAuthInitialMode("create");
                       setShowAuthModal(true);
                     }}
-                    duration={3.6}
-                    lightWidth={110}
-                    lightColor="#FAFAFA"
-                    backgroundColor="currentColor"
-                    borderWidth={2}
-                    className="bg-[#111111] text-[11px]"
+                    className="nav-auth-signup"
                   >
                     Sign Up
-                  </StarButton>
+                  </button>
                 </div>
               )}
             </div>
@@ -623,37 +612,27 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                     </ShinyButton>
                   </Link>
                 ) : (
-                  <div className="flex gap-4">
-                    <StarButton
+                  <div className="flex gap-2">
+                    <button
                       onClick={() => {
                         setAuthInitialMode("login");
                         setShowAuthModal(true);
                         closeMenu();
                       }}
-                      duration={3}
-                      lightWidth={95}
-                      lightColor="#FAFAFA"
-                      backgroundColor="currentColor"
-                      borderWidth={2}
-                      className="bg-[#111111] text-[11px] px-6 py-2"
+                      className="nav-auth-login"
                     >
                       Login
-                    </StarButton>
-                    <StarButton
+                    </button>
+                    <button
                       onClick={() => {
                         setAuthInitialMode("create");
                         setShowAuthModal(true);
                         closeMenu();
                       }}
-                      duration={3.6}
-                      lightWidth={105}
-                      lightColor="#FAFAFA"
-                      backgroundColor="currentColor"
-                      borderWidth={2}
-                      className="bg-[#111111] text-[11px] px-6 py-2"
+                      className="nav-auth-signup"
                     >
                       Sign Up
-                    </StarButton>
+                    </button>
                   </div>
                 )}
               </div>
@@ -747,6 +726,80 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   color: #C9A84C !important;
   background: rgba(201, 168, 76, 0.1) !important;
   border: 1px solid rgba(201, 168, 76, 0.3) !important;
+}
+
+/* ---- Redesigned Auth Buttons ---- */
+@keyframes nav-auth-btn-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sm-scope .staggered-menu-header .nav-auth-login {
+  animation: nav-auth-btn-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+.sm-scope .staggered-menu-header .nav-auth-signup {
+  animation: nav-auth-btn-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both;
+}
+
+.sm-scope .nav-auth-login {
+  background: transparent;
+  border: 1px solid rgba(201,168,76,0.6);
+  color: #C9A84C;
+  border-radius: 980px;
+  padding: 8px 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sm-scope .nav-auth-login:hover {
+  background-color: rgba(201,168,76,0.1);
+  border-color: #C9A84C;
+  transform: translateY(-1px) scale(1.02);
+}
+.sm-scope .nav-auth-login:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.sm-scope .nav-auth-signup {
+  background: #C9A84C;
+  border: none;
+  color: #000000;
+  border-radius: 980px;
+  padding: 8px 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sm-scope .nav-auth-signup:hover {
+  background-color: #b8852a;
+  box-shadow: 0 6px 20px rgba(201,168,76,0.45);
+  transform: translateY(-1px) scale(1.02);
+}
+.sm-scope .nav-auth-signup:active {
+  transform: translateY(0) scale(0.98);
+}
 }
       `}} />
     </div>

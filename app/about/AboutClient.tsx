@@ -598,7 +598,7 @@ export default function AboutClient() {
                   <h4 className="text-xs font-semibold text-white tracking-wider uppercase">Contact Support</h4>
                   <div className="text-[0.75rem] text-neutral-400/90 mt-1 space-y-1">
                     <p>WhatsApp: <a href="https://wa.me/919567931330" target="_blank" rel="noopener noreferrer" className="text-[#C9A84C] hover:underline">+91 95679 31330</a></p>
-                    <p>Email: <a href="mailto:soundwave31330@gmail.com" className="text-[#C9A84C] hover:underline">soundwave31330@gmail.com</a></p>
+                    <p>Email: <a href="mailto:soundwave.sarga@gmail.com" className="text-[#C9A84C] hover:underline">soundwave.sarga@gmail.com</a></p>
                     <p>Instagram: <a href="https://www.instagram.com/soundwave.gear?igsh=MXNxaTA0Mjh4ZWs0dQ==" target="_blank" rel="noopener noreferrer" className="text-[#C9A84C] hover:underline">@soundwave.gear</a></p>
                   </div>
                 </div>

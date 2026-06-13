@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import ShinyText from "@/components/ShinyText";
 import { useWelcome } from "@/context/WelcomeContext";
@@ -86,6 +87,17 @@ export default function WelcomeGate() {
               transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col items-center gap-5"
             >
+              {/* Logo Emblem */}
+              <div style={{ position: "relative", width: "120px", height: "120px" }}>
+                <Image
+                  src="/images/logo.png"
+                  alt="SoundWave Logo Emblem"
+                  fill
+                  style={{ objectFit: "contain" }}
+                  priority
+                />
+              </div>
+
               {/* SOUNDWAVE title */}
               <h1
                 style={{

@@ -255,7 +255,7 @@ function ProductsContent() {
   return (
     <>
       {/* ── Scoped styles ── */}
-      <style>{`
+      <style suppressHydrationWarning>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
 
         /* shimmer animation */
@@ -686,7 +686,7 @@ function ProductsContent() {
                   }}
                   className="sw-product-grid"
                 >
-                  <style>{`
+                  <style suppressHydrationWarning>{`
                     @media (max-width: 1024px) {
                       .sw-product-grid { grid-template-columns: repeat(2, 1fr) !important; }
                     }
@@ -776,7 +776,7 @@ function ProductsContent() {
 
                         {/* Wishlist button — top right */}
                         <WishlistButton
-                          productId={product.id}
+                          product={product}
                           className="absolute top-2 right-2 z-20"
                         />
                       </div>
@@ -877,7 +877,7 @@ function ProductsContent() {
                               </>
                             )}
                           </div>
-                          <WishlistButton productId={product.id} className="absolute top-2 right-2 z-20" />
+                          <WishlistButton product={product} className="absolute top-2 right-2 z-20" />
                         </div>
                         <div style={{ padding: "16px 16px 20px", display: "flex", flexDirection: "column", flex: 1 }}>
                           <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "#C9A84C", marginBottom: "6px" }}>{product.category.replace("-", " ")}</p>
